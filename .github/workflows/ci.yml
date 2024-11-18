@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# cancel in-progress runs on new commits to same PR (gitub.event.number)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Aiken
+        uses: aiken-lang/setup-aiken@v1
+        with:
+          version: v1.0.29-alpha
+
+      - name: 🧪 Run fmt check
+        run: aiken fmt --check
+
+      - name: 🧪 Run lint
+        run: aiken check -s -D
+
+      - name: 🎁 Run build
+        run: aiken build
+
+      - name: 🧪 Run test
+        run: aiken check
