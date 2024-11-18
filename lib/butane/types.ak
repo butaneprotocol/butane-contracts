@@ -466,7 +466,7 @@ pub type AuxilliaryRedeemer {
 
 pub type StakingRedeemer {
   StakeSynthetics { staked_amount: Int }
-  UnstakeSynthetics { verifier: CDPCredentialVerifier }
+  UnstakeSynthetics { verifiers: List<CDPCredentialVerifier> }
 }
 
 // Price feeds

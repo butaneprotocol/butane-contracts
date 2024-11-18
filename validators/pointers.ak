@@ -15,7 +15,7 @@ validator(upgradeable_script_hash: Referenced<Credential>) {
 
 validator(
   upgradeable_script_hash: Referenced<Credential>,
-  /// Arbitrary number for mining to ensure that the minting policy is low (vanity reasons)
+  /// Arbitrary number for mining to allow for mining of a low minting policy
   _salt: Int,
 ) {
   fn mint(_redeemer: Data, ctx: ScriptContext) -> Bool {

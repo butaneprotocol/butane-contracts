@@ -1,3 +1,4 @@
+use aiken/builtin
 use aiken/dict
 use aiken/interval.{Finite, Interval, IntervalBound}
 use aiken/list
@@ -68,63 +69,72 @@ pub fn staking_script(
         (params_synth == synthetic_asset)?,
       }
     }
-    types.UnstakeSynthetics { verifier } -> {
-      expect [
-        Input {
-          output: Output {
-            datum: InlineDatum(raw_staked_datum),
-            value: staked_value,
-            ..
-          },
-          output_reference: this_oref,
-        },
-      ] =
-        list.filter(
-          inputs,
-          fn(i: Input) { i.output.address.payment_credential == state_cred },
-        )
-      expect types.StakedSynthetics { owner, synthetic_asset, start_time } =
-        utils.to_monodatum(raw_staked_datum)
+    types.UnstakeSynthetics { verifiers } -> {
       let end_time = valid_from
-      expect
-        utils.authorization_check(
-          fcredential: owner,
-          this_oref: this_oref,
-          verifier: verifier,
-          extra_signatories: extra_signatories,
-          inputs: inputs,
-          withdrawals: withdrawals,
-          valid_from: valid_from,
-          valid_to: valid_to,
-        )?
       let minted_here = value.tokens(minted, mint_script_hash) |> dict.to_pairs
-      let staked_amount =
-        value.quantity_of(staked_value, mint_script_hash, synthetic_asset)
       expect types.LiveParams{params: types.ActiveParams {
         staking_interest_rates,
         ..
       }}: types.Params = params
-      let earnings_percent =
-        utils.calculate_earnings_percent(
-          staking_interest_rates,
-          start_time,
-          end_time,
-        )
-      let earnings_interest =
-        earnings_percent * staked_amount / types.bp_precision / types.milliseconds_in_year
-      and {
-        or {
-          minted_here == [
-            Pair(types.staking_lock_token_name, -1),
-            Pair(synthetic_asset, earnings_interest),
-          ],
-          minted_here == [
-            Pair(synthetic_asset, earnings_interest),
-            Pair(types.staking_lock_token_name, -1),
-          ],
-        },
-        (params_synth == synthetic_asset)?,
-        (end_time > start_time)?,
+      let (expected_lock_tokens, expected_earnings, _) = {
+        let
+          Input {
+            output: Output { datum, value: staked_value, address, .. },
+            output_reference: this_oref,
+          },
+          (curr_lock_burn, curr_earnings, curr_verifiers),
+        <- list.foldl(inputs, (0, 0, verifiers))
+        if address.payment_credential != state_cred {
+          (curr_lock_burn, curr_earnings, curr_verifiers)
+        } else {
+          expect InlineDatum(raw_staked_datum) = datum
+          expect types.StakedSynthetics { owner, synthetic_asset, start_time } =
+            utils.to_monodatum(raw_staked_datum)
+          let staked_amount =
+            value.quantity_of(staked_value, mint_script_hash, synthetic_asset)
+          let earnings_percent =
+            utils.calculate_earnings_percent(
+              staking_interest_rates,
+              start_time,
+              end_time,
+            )
+          let earnings_interest =
+            earnings_percent * staked_amount / types.bp_precision / types.milliseconds_in_year
+
+          expect and {
+              // Unstaking is authorized
+              utils.authorization_check(
+                fcredential: owner,
+                this_oref: this_oref,
+                verifier: builtin.head_list(curr_verifiers),
+                extra_signatories: extra_signatories,
+                inputs: inputs,
+                withdrawals: withdrawals,
+                valid_from: valid_from,
+                valid_to: valid_to,
+              )?,
+              // Valid unstaking time
+              (end_time > start_time)?,
+              // Only using one (and the correct) synth
+              (params_synth == synthetic_asset)?,
+            }
+
+          (
+            curr_lock_burn + 1,
+            curr_earnings + earnings_interest,
+            builtin.tail_list(curr_verifiers),
+          )
+        }
+      }
+      or {
+        minted_here == [
+          Pair(types.staking_lock_token_name, -expected_lock_tokens),
+          Pair(params_synth, expected_earnings),
+        ],
+        minted_here == [
+          Pair(params_synth, expected_earnings),
+          Pair(types.staking_lock_token_name, -expected_lock_tokens),
+        ],
       }
     }
   }

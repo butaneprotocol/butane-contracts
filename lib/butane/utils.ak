@@ -313,6 +313,16 @@ pub fn is_minimal_denom(nums: List<Int>, denom: Int) -> Bool {
   list.foldl(nums, denom, fn(n, acc) { math.gcd(math.gcd(n, denom), acc) }) == 1
 }
 
+pub fn is_reserved_asset(asset: AssetName) -> Bool {
+  or {
+    (asset == types.cdp_lock_token_name)?,
+    (asset == types.gov_lock_token_name)?,
+    (asset == types.staking_lock_token_name)?,
+    (bytearray.take(asset, types.params_prefix_length) == types.params_prefix)?,
+    (bytearray.take(asset, types.debt_prefix_length) == types.debt_prefix)?,
+  }
+}
+
 pub fn authorization_check(
   fcredential: types.CDPCredential,
   this_oref: OutputReference,

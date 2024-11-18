@@ -100,10 +100,7 @@ pub fn params_init(
     // Params token name is in correct format (contains the "p_" prefix followed by the correct synthetic name)
     (param_token_name == bytearray.concat(types.params_prefix, expected_asset))?,
     // Synthetic name isn't a reserved name or invalid
-    (expected_asset != types.cdp_lock_token_name)?,
-    (expected_asset != types.gov_lock_token_name)?,
-    (bytearray.take(expected_asset, types.params_prefix_length) != types.params_prefix)?,
-    (bytearray.take(expected_asset, types.debt_prefix_length) != types.debt_prefix)?,
+    !utils.is_reserved_asset(expected_asset)?,
     // Minting one params token
     (param_minted_qty == 1)?,
     // Burning one gov lock token

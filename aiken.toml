@@ -1,7 +1,7 @@
-name = "mcomp-tech/improved-spork"
+name = "butaneprotocol/butane-contracts"
 version = "0.0.1"
 licenses = []
-description = "Butane MVP"
+description = "Contracts for the Butane Protocol"
 dependencies = [
   { name = "aiken-lang/stdlib", version = "1.9.0", source = "github" },
   { name = "aiken-lang/fuzz", version = "1.0.0", source = "github" },

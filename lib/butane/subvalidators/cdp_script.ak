@@ -322,6 +322,21 @@ pub fn spend_transitions(
               actual_repayed_amount == repay_amount,
               // New CDP is healthy
               (rational.compare(new_hf, rational.from_int(1)) != Less)?,
+              // Not adding any additional tokens to the leftover value
+              {
+                let
+                  pol,
+                  tok,
+                  qty,
+                  acc,
+                <-
+                  value.reduce(
+                    leftover_value
+                      |> value.add(mint_script_hash, types.cdp_lock_token_name, -1),
+                    True,
+                  )
+                acc && value.quantity_of(cdp_value_no_lock, pol, tok) >= qty
+              },
             }
 
           let treasury_share =
@@ -415,6 +430,11 @@ pub fn spend_transitions(
               (rational.compare(hf, rational.from_int(1)) == Less)?,
               // We must be exceeding the maximum allowed earnings, forcing a leftover
               (rational.compare(cr, max_liquidation_return_rat) == Greater)?,
+              // Can't add any additional tokens to the leftover
+              {
+                let pol, tok, qty, acc <- value.reduce(leftover_value, True)
+                acc && value.quantity_of(cdp_value_no_lock, pol, tok) >= qty
+              },
             }
 
           utils.get_state_delta(
